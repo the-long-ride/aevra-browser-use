@@ -1,0 +1,18 @@
+{
+  "exclude": [
+    "vendor/**",
+    "test/**",
+    "shared/**",
+    ".test-dist/shared/**",
+    "scripts/**",
+    "**/*.d.ts",
+    ".test-dist/test/**",
+    ".test-dist/vendor/**"
+  ],
+  "reporter": ["text", "lcov"],
+  "check-coverage": true,
+  "lines": 85,
+  "branches": 85,
+  "functions": 85,
+  "statements": 85
+}

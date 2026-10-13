@@ -1,0 +1,369 @@
+# Aevra Browser — Architecture & Usage Guide for AI Assistants (llm.txt)
+
+> **Specification, Troubleshooting & Operator Reference for Language Models**
+> Version: 1.0.0
+> License: MIT
+> Author: the-long-ride (made by <3)
+> Repository: https://github.com/the-long-ride/aevra-browser
+> Parent Repository (Aevra Gateway): https://github.com/the-long-ride/aevra
+> Desktop Automation: https://github.com/the-long-ride/aevra-desktop-use
+> Issues & Bug Reports: https://github.com/the-long-ride/aevra-browser/issues
+
+---
+
+## 1. What is Aevra Browser?
+
+Aevra Browser is an open-source, local Model Context Protocol (MCP) execution server dedicated specifically to real-world browser automation. Built on Aevra's battle-tested Chromium MV3 extension and Chrome DevTools Protocol (CDP) drivers, it gives AI assistants (Claude Code, ChatGPT, Codex, Antigravity, OpenCode, Cursor, and custom autonomous agents) deep, deterministic control over real web browsers running on the user's desktop.
+
+### Core Architectural Invariants
+
+> **The user retains complete physical authority. Browser automation executes only within explicitly paired browser sessions or CDP endpoints.**
+
+1. **Zero Cloud Dependency & Loopback Only**:
+   All MCP protocol traffic, WebSocket extension frames, and CDP commands execute strictly over local loopback (`127.0.0.1`). No tokens, screenshots, DOM trees, or actions are ever proxied through external cloud infrastructure.
+2. **Focus & Workflow Preservation**:
+   Browser actions execute purely in the background via extension content scripts and CDP dispatchers without stealing window focus, moving the desktop cursor, or interrupting the human operator.
+3. **Out-of-Process Isolation**:
+   Untrusted AI instructions never hold direct raw operating system handles or unrestricted network sockets. Every action passes through policy guards, rate limiters, and schema validators.
+4. **Data Loss Prevention (DLP) & Credential Protection**:
+   Credential-shaped inputs (passwords, tokens, cookies, auth headers) are automatically omitted from accessibility snapshots. Model attempts to type high-entropy secrets or auth tokens into pages are strictly rejected with `BROWSER_ORIGIN_BLOCKED`.
+
+---
+
+## 2. System Architecture & Topology
+
+```text
+AI Clients & Coding Assistants:
+  Claude Code, Codex, Antigravity, OpenCode, Cursor, ChatGPT, Custom Agents
+                               │
+                               ▼ (stdio transport or HTTP Bearer token)
+MCP Bridge / HTTP Endpoint (Port 47842 / AEVRA_BROWSER_MCP_PORT)
+                               │
+    ┌──────────────────────────┴──────────────────────────┐
+    │                                                     │
+Browser Daemon Controller                   Settings & Pairing Server (Port 47841)
+- Session & Driver Registry                 - Single-Use 5-Minute Pairing Codes
+- CDP Driver Attachment                     - Technical Monospace Web Dashboard
+- JSON-RPC 2.0 Dispatcher                   - Loopback Origin & CSRF Protection
+    │
+    ▼ (Local WebSocket Port 47843 / AEVRA_BROWSER_WS_PORT)
+Chromium MV3 Extension / Paired Browser Tab
+    ├─ Tab Lifecycle Management (open, close, list, focus)
+    ├─ Fast Page Navigation & Ready-State Waiters
+    ├─ Accessibility Tree (a11y) & Visual Vision Snapshots
+    ├─ Semantic Actions (click, type, select, press_key, scroll, wait_for)
+    ├─ Coordinate-Accurate Mouse & Drag Fallbacks
+    ├─ Bounded Playwright-Like Script Fast Lane
+    └─ Real-Time Console Error & Network Observation Loggers
+```
+
+### Port Allocation & Environment Overrides
+
+| Port                   | Environment Variable         | Default    | Purpose                                                                  |
+| :--------------------- | :--------------------------- | :--------- | :----------------------------------------------------------------------- |
+| **Settings & Pairing** | `AEVRA_BROWSER_PAIR_PORT`    | `47841`    | Web dashboard, one-time pairing exchange, and API management.            |
+| **MCP Server**         | `AEVRA_BROWSER_MCP_PORT`     | `47842`    | Model Context Protocol stream (stdio bridge or HTTP SSE).                |
+| **Extension WS**       | `AEVRA_BROWSER_WS_PORT`      | `47843`    | WebSocket bridge for Chromium MV3 extension IPC.                         |
+| **CDP Target**         | `AEVRA_BROWSER_CDP_PORT`     | `9222`     | Chrome DevTools Protocol port for headless or remote-debugging browsers. |
+| **Auto-Idle Timeout**  | `AEVRA_BROWSER_IDLE_TIMEOUT` | `30` (min) | Inactivity shutdown timer in minutes (0 disables auto-shutdown).         |
+
+> **Port Offset Design**: Root Aevra occupies ports `47830`–`47833`. Aevra Browser intentionally uses `47841`–`47843`. Both projects run concurrently on the same machine without collisions.
+
+---
+
+## 3. Storage & Filesystem Layout
+
+All runtime state, locks, pairings, and agent credentials reside inside `AEVRA_BROWSER_HOME`.
+
+### Operating System Locations
+
+- **Windows**: `%LOCALAPPDATA%\aevra-browser` (fallback: `~/.aevra-browser`)
+- **macOS**: `~/Library/Application Support/aevra-browser`
+- **Linux**: `$XDG_STATE_HOME/aevra-browser` (fallback: `~/.local/state/aevra-browser`)
+
+### State Directory Hierarchy
+
+```text
+<state-dir>/
+  ├── config.json          # Persisted custom listener ports and extension path
+  ├── daemon.lock          # Tracks active daemon PID, port allocations, and token
+  ├── pairings.json        # Paired browser profiles and extension authentication keys
+  ├── credentials/         # Per-agent HTTP bearer credentials for MCP connections
+  ├── logs/                # Daemon stdout and stderr logs for troubleshooting
+  └── extension/           # Unpacked Chromium Manifest V3 extension bundle
+```
+
+---
+
+## 4. Extension Installation & Browser Pairing
+
+Connecting your real browser (Google Chrome, Brave, Microsoft Edge, Arc, Chromium) requires loading the unpacked extension once and pairing with a single-use code.
+
+### Step-by-Step Pairing Workflow
+
+1. **Download & Stage Extension**:
+
+   ```bash
+   aevra-browser extension install
+   ```
+
+   This unpacks the official Manifest V3 extension bundle into `<state-dir>/extension/`.
+
+2. **Load in Chromium**:
+   - Open your browser to `chrome://extensions/` (or `edge://extensions/`, `brave://extensions/`).
+   - Enable **Developer mode** toggle (usually top-right).
+   - Click **Load unpacked** and select the extension directory shown by `aevra-browser status` (e.g. `C:\Users\<user>\AppData\Local\aevra-browser\extension`).
+
+3. **Generate Pairing Code**:
+
+   ```bash
+   aevra-browser pair
+   ```
+
+   Or click **Create pairing code** in the Web UI (`http://127.0.0.1:47841`).
+
+4. **Authenticate Extension**:
+   - Click the Aevra Browser extension icon in your browser toolbar.
+   - Enter pairing port `47841` and the generated 8-character code.
+   - The code expires in **5 minutes** (`PAIRING_CODE_INVALID` if expired).
+   - Once paired, the profile appears under `Paired Profiles` and is persisted in `pairings.json`.
+
+5. **Switching Between Root Aevra and Aevra Browser**:
+   - Root Aevra uses pairing port `47831`.
+   - Aevra Browser uses pairing port `47841`.
+   - Pairing with a new code from either daemon updates the extension target seamlessly.
+
+---
+
+## 5. Built-in MCP Tools Reference (10 Tools)
+
+The MCP surface provides 10 fine-grained browser primitives designed specifically for autonomous workflows.
+
+### 5.1 `browser_connect`
+
+Attach to a paired browser or CDP endpoint.
+
+- **Parameters**:
+  - `transport` (`string`, required): `"extension"` or `"cdp"`.
+  - `cdpPort` (`integer`, optional): CDP debugging port (defaults to 9222).
+  - `tabId` (`string`, optional): Specific browser tab to attach to initially.
+- **Critical Invariant**:
+  Pairing alone does **not** attach a browser session. When `browser_status` reports `connectionState: "ready_to_connect"`, the AI assistant **must call `browser_connect` with `transport: "extension"`** before issuing page commands.
+
+### 5.2 `browser_status`
+
+Introspects current browser connectivity, paired profiles, and active tab state.
+
+- **Parameters**: None.
+- **Reported Connection States**:
+  - `disconnected`: No daemon or browser connection available.
+  - `pairing_required`: Daemon is listening, but no extension profile has paired.
+  - `ready_to_connect`: Extension is connected over WebSocket; call `browser_connect` to attach.
+  - `attached`: Active browser session ready for tabs, navigation, reading, and actions.
+- **Returns**: `connectionState`, `activeTab`, `pairings`, and suggested `nextAction`.
+
+### 5.3 `browser_disconnect`
+
+Safely detaches the active browser automation session.
+
+- **Parameters**: None.
+- **Invariant**: The pairing and extension WebSocket remain intact. Calling `browser_disconnect` frees the CDP debugger attachment while leaving the browser open.
+
+### 5.4 `browser_tabs`
+
+Inspect and manage open browser tabs.
+
+- **Parameters**:
+  - `action` (`string`, required): `"list"`, `"open"`, `"close"`, or `"focus"`.
+  - `url` (`string`, optional): URL to open when `action` is `"open"`.
+  - `tabId` (`string`, optional): Target tab ID for `"close"` or `"focus"`.
+
+### 5.5 `browser_navigate`
+
+Navigate a browser tab to an absolute URL and wait for page stabilization.
+
+- **Parameters**:
+  - `url` (`string`, required): Target URL (e.g. `https://example.com`).
+  - `tabId` (`string`, optional): Target tab ID (defaults to active tab).
+  - `waitUntil` (`string`, optional): `"load"` (DOMContentLoaded) or `"idle"` (network quiescence).
+- **Security Guard**: Navigating to internal daemon endpoints (`127.0.0.1:47841`–`47843` or `47830`–`47833`) is blocked with `BROWSER_ORIGIN_BLOCKED`.
+
+### 5.6 `browser_snapshot`
+
+Inspect the structure, content, and visual state of the active page.
+
+- **Parameters**:
+  - `mode` (`string`, optional): `"a11y"` (accessibility tree) or `"vision"` (screenshot).
+  - `maxNodes` (`integer`, optional): Maximum accessibility nodes to return (1–2000, default 500).
+  - `tabId` (`string`, optional): Target tab ID (defaults to active tab).
+- **Rule of Thumb**:
+  - **Always use `mode: "a11y"` first**. It produces a compact, semantic accessibility tree with stable element `ref` IDs (e.g. `ref: "e42"`).
+  - Use `mode: "vision"` only when canvas, WebGL, custom graphics, or styling anomalies prevent semantic element identification.
+
+### 5.7 `browser_read`
+
+Read text, HTML, or element-specific attributes from a tab.
+
+- **Parameters**:
+  - `ref` (`string`, optional): Element reference string from a previous `browser_snapshot`.
+  - `selector` (`string`, optional): CSS selector (when no `ref` is available).
+  - `format` (`string`, optional): `"text"` (clean inner text) or `"html"` (outer HTML).
+  - `tabId` (`string`, optional): Target tab ID.
+
+### 5.8 `browser_act_many`
+
+Execute an ordered batch of browser interactions within a single request.
+
+- **Parameters**:
+  - `actions` (`array`, required): Ordered array of action objects.
+  - `stopOnError` (`boolean`, optional): Halt batch immediately if an action fails.
+  - `tabId` (`string`, optional): Target tab ID.
+- **Supported Operations**:
+  - `click`: `{ "op": "click", "ref": "e12" }` or `{ "op": "click", "selector": "#submit-btn" }` or `{ "op": "click", "x": 350, "y": 420 }`.
+  - `type`: `{ "op": "type", "ref": "e14", "text": "Search query", "clear": true }`.
+  - `press_key`: `{ "op": "press_key", "key": "Enter" }` (or `Tab`, `Escape`, `ArrowDown`).
+  - `scroll`: `{ "op": "scroll", "dx": 0, "dy": 400, "ref": "e10" }`.
+  - `drag`: `{ "op": "drag", "x": 100, "y": 100, "toX": 300, "toY": 300 }`.
+  - `select`: `{ "op": "select", "ref": "e18", "value": "option_value" }`.
+  - `wait_for`: `{ "op": "wait_for", "selector": ".dashboard", "timeoutMs": 5000 }` (maximum 60,000ms).
+
+### 5.9 `browser_execute_script`
+
+Execute a bounded, policy-checked Playwright-like automation script.
+
+- **Parameters**:
+  - `script` (`string`, required): Script text using bounded locator operations.
+  - `stopOnError` (`boolean`, optional): Halt batch on first script failure.
+  - `tabId` (`string`, optional): Target tab ID.
+- **Supported Script Primitives**:
+  - `locator("selector").click()`
+  - `locator("selector").fill("text")`
+  - `locator("selector").type("text")`
+  - `locator("selector").waitFor()`
+  - `getByText("text").waitFor()`
+  - `keyboard.press("Key")`
+- **Security Boundary**: Raw JavaScript evaluation (`eval`, arbitrary script injection, `window.*` tampering) is intentionally rejected to ensure strict isolation.
+
+### 5.10 `browser_logs`
+
+Retrieve captured console output and network failure logs.
+
+- **Parameters**:
+  - `kind` (`string`, optional): `"console"` (console.log/warn/error) or `"network"` (failed requests).
+  - `limit` (`integer`, optional): Number of log entries (1–500, default 50).
+  - `since` (`string`, optional): ISO timestamp lower bound.
+  - `tabId` (`string`, optional): Target tab ID.
+
+---
+
+## 6. Local Coding Agent Integration
+
+Aevra Browser connects to local coding assistants in one command.
+
+```bash
+# Provision integrations for all detected coding assistants:
+aevra-browser agent install all --transport stdio
+
+# Or install for a specific agent:
+aevra-browser agent install claude-code --transport stdio
+aevra-browser agent install codex --transport stdio
+aevra-browser agent install antigravity --transport stdio
+aevra-browser agent install antigravity-cli --transport stdio
+aevra-browser agent install antigravity-ide --transport stdio
+aevra-browser agent install opencode --transport stdio
+```
+
+### Agent Configuration Targets
+
+- **Codex**: Configured in `~/.codex/config.toml`.
+- **Claude Code**: Configured in `~/.claude.json` (or `$CLAUDE_CONFIG_DIR/.claude.json`).
+- **Antigravity**: Configured in `~/.gemini/antigravity/mcp_config.json`.
+- **Antigravity CLI**: Configured in `~/.gemini/antigravity-cli/mcp_config.json` (detected by `agy` or `antigravity-cli`).
+- **Antigravity IDE**: Configured in `~/.gemini/config/mcp_config.json` (detected by `antigravity-ide` or `~/.gemini/config`).
+- **OpenCode**: Configured in `~/.config/opencode/opencode.json` (or `.jsonc`).
+
+### Transports Explained
+
+- **`stdio`**: Spawns `aevra-browser mcp`. Starts an autostart daemon automatically if none is running. Zero credential configuration needed.
+- **`http`**: Generates a long-lived bearer token in `<state-dir>/credentials/` and connects to `http://127.0.0.1:47842/mcp`.
+
+---
+
+## 7. Diagnostics, Error Codes & Troubleshooting
+
+When an operation fails, Aevra Browser returns structured error codes. Use this table to diagnose root causes and apply fixes:
+
+| Error Code                   | Root Cause                                                                               | Exact Resolution                                                                                                               |
+| :--------------------------- | :--------------------------------------------------------------------------------------- | :----------------------------------------------------------------------------------------------------------------------------- |
+| `BROWSER_DAEMON_UNAVAILABLE` | No background daemon is active and the bridge could not start one.                       | Run `aevra-browser serve` in terminal, or verify permissions in `<state-dir>/daemon.lock`.                                     |
+| `BROWSER_PORT_MISMATCH`      | A running daemon is bound to different ports than requested.                             | Run `aevra-browser stop`, then re-run your command with the desired port options.                                              |
+| `BROWSER_LISTENER_FAILED`    | Port collision (`EADDRINUSE`) or interface binding error.                                | Another process occupies port 47841, 47842, or 47843. Free the port or use `aevra-browser serve --basePort <port>`.            |
+| `BROWSER_ORIGIN_BLOCKED`     | Attempted navigation to loopback daemon ports or attempted typing secret data into page. | 1. Do not navigate to `127.0.0.1:47841`–`47843`.<br>2. Remove tokens, passwords, and API keys from `type` or `select` actions. |
+| `BROWSER_UNAVAILABLE`        | Attempted browser actions when no extension or CDP session is connected.                 | Run `aevra-browser status`. If no pairing exists, run `aevra-browser pair` and connect the extension.                          |
+| `BROWSER_NOT_CONNECTED`      | Extension is paired and socket is open, but `browser_connect` was not called.            | Call `browser_connect(transport: "extension")` before issuing tab or DOM commands.                                             |
+| `PAIRING_CODE_INVALID`       | Pairing code was mistyped, consumed, or expired (5 min timeout).                         | Run `aevra-browser pair` to generate a fresh 8-character pairing code.                                                         |
+| `CONFIG_INVALID`             | Port out of range (1–65535), ports collide, or extension dir is not absolute.            | Ensure ports are distinct integers and extension path is an absolute filesystem path.                                          |
+| `STATE_PURGE_BUSY`           | Attempted `aevra-browser uninstall --purge` while daemon is actively running.            | Stop the daemon first with `aevra-browser stop`, then re-run uninstall.                                                        |
+| `BOOTSTRAP_EXPIRED`          | Single-use Web UI token already consumed or session expired.                             | Re-launch dashboard with `aevra-browser ui` to obtain a fresh authenticated session.                                           |
+| `CSRF_REJECTED`              | Missing or invalid `x-aevra-csrf` header on administrative POST request.                 | Ensure API requests pass the CSRF token received during session initialization.                                                |
+
+---
+
+## 8. Crucial Operator Guidelines for AI Assistants
+
+When assisting a human operator through Aevra Browser MCP tools:
+
+1. **Check Status First**:
+   Always call `browser_status` before starting complex workflows. Inspect `connectionState`. If it is `"ready_to_connect"`, immediately call `browser_connect(transport: "extension")`.
+2. **Prioritize Accessibility Over Vision**:
+   Call `browser_snapshot(mode: "a11y")` to get semantic elements with exact `ref` properties. Only fall back to `"vision"` for canvas or non-standard graphical widgets.
+3. **Batch Browser Actions in `browser_act_many`**:
+   Group consecutive interactions (e.g. `click` input -> `type` text -> `press_key` Enter -> `wait_for` result) into a single `browser_act_many` call to minimize IPC latency.
+4. **Never Type Real Passwords or Secrets**:
+   DLP will block secret-shaped outbound text (`BROWSER_ORIGIN_BLOCKED`). If a login form requires credentials, instruct the user to log in manually in the browser window.
+5. **Verify State Transitions**:
+   Web applications update asynchronously. After navigating or submitting forms, use `wait_for` or issue a fresh `browser_snapshot` to confirm the expected DOM state loaded.
+
+---
+
+## 9. CLI Quick Reference
+
+```bash
+# Start daemon in foreground with ASCII banner and monitor table:
+aevra-browser serve
+
+# Start daemon with custom idle shutdown timeout (e.g., 15 minutes, or 0 to disable):
+aevra-browser serve --idle-timeout 15
+
+# Start daemon and launch the Settings Web UI:
+aevra-browser serve --ui
+
+# Open Web UI for an existing running daemon:
+aevra-browser ui
+
+# Run stdio MCP server for agent configs:
+aevra-browser mcp
+
+# Generate an 8-character single-use extension pairing code:
+aevra-browser pair
+
+# Inspect connection status, active ports, and paired profiles:
+aevra-browser status
+
+# Unpair a specific profile or unpair all:
+aevra-browser unpair <profile-id>
+aevra-browser unpair --all
+
+# Download and unpack the Chromium extension:
+aevra-browser extension install
+
+# Install or uninstall agent integrations:
+aevra-browser agent install all --transport stdio
+aevra-browser agent uninstall all
+
+# Stop the running daemon:
+aevra-browser stop
+
+# Complete uninstall with state purge:
+aevra-browser uninstall --purge
+```

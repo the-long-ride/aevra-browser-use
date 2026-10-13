@@ -1,0 +1,320 @@
+import { findBySelector, textOf } from './snapshot-read.js';
+import type {
+  BrowserActionInput,
+  BrowserActionResult,
+  BrowserLogEntry,
+  BrowserTabInfo,
+} from '../../protocol/src/browser.js';
+import type { NavigateResult } from './driver.js';
+import { assertActionOrigin, assertReadOrigin } from './action-origin.js';
+import type { ActOptions } from './driver.js';
+import { RefRegistry, type SnapshotElementLike } from './dom-snapshot.js';
+import { extensionSnapshot } from './extension-snapshot.js';
+import type { VisionCapture } from './vision-budget.js';
+
+export type CaptureStage =
+  'capture_started' | 'capture_api_done' | 'encode_done' | 'reply_send_attempt';
+
+export interface CaptureProgress {
+  stage: CaptureStage;
+  elapsedMs: number;
+  bytes?: number;
+}
+
+export interface ExtensionBridge {
+  guardRead?(
+    tabId: string,
+    expectedUrl: string,
+    operation: () => Promise<unknown>,
+  ): Promise<unknown>;
+  listTabs(): Promise<BrowserTabInfo[]>;
+  focus(tabId: string): Promise<void>;
+  serialize(tabId?: string): Promise<SnapshotElementLike>;
+  apply(
+    action: BrowserActionInput,
+    elementId: string | null,
+    tabId?: string,
+    isCancelled?: () => boolean,
+    guard?: ActOptions,
+  ): Promise<{ ok: boolean; code?: string }>;
+  /** Bounded to the transport budget; the ratio is image pixels per CSS pixel. */
+  captureVisible(
+    tabId?: string,
+    onProgress?: (progress: CaptureProgress) => void,
+    annotations?: () => Promise<SnapshotElementLike | null>,
+    isCancelled?: () => boolean,
+  ): Promise<VisionCapture & { annotationRoot?: SnapshotElementLike | null }>;
+  navigate(url: string, waitUntil: 'load' | 'idle', tabId?: string): Promise<NavigateResult>;
+  logs(kind: 'console' | 'network', limit: number, tabId?: string): Promise<BrowserLogEntry[]>;
+}
+
+export interface ExtensionCommand {
+  op: 'tabs' | 'navigate' | 'snapshot' | 'read' | 'act' | 'logs';
+  params: Record<string, any>;
+}
+
+function failure(op: BrowserActionInput['op'], code: string, message: string): BrowserActionResult {
+  return { op, ok: false, error: { code, message } };
+}
+
+function actionFailureMessage(action: BrowserActionInput, code: string, tabId?: string): string {
+  if (
+    action.op === 'drag' ||
+    (action.op === 'click' &&
+      !action.ref &&
+      !action.selector &&
+      (action.x !== undefined || action.y !== undefined))
+  ) {
+    const target = tabId ?? 'active tab';
+    if (code === 'BROWSER_NATIVE_INPUT_UNAVAILABLE') {
+      return `Native input unavailable for ${target}; check debugger permission or another debugger attachment`;
+    }
+    if (code === 'BROWSER_INPUT_FAILED') return `Native input failed for ${target}`;
+    if (code === 'BROWSER_ORIGIN_BLOCKED') return `Browser origin blocked for ${target}`;
+    if (code === 'NOT_FOUND') return `Browser tab ${target} was not found`;
+  }
+  return `${action.op} did not complete in the page`;
+}
+
+/**
+ * Image-pixels-per-CSS-pixel of the last vision capture, per tab. Coordinates
+ * arrive in the space of the picture the caller last saw, and the capture may
+ * have been downscaled to fit the transport, so only the ratio that picture
+ * was encoded at can turn them back into CSS pixels. Keyed by registry, which
+ * is the extension's per-connection state.
+ */
+const captureScales = new WeakMap<RefRegistry, Map<string, number>>();
+
+function rememberScale(registry: RefRegistry, tabId: string, scale: number): void {
+  let scales = captureScales.get(registry);
+  if (!scales) {
+    scales = new Map();
+    captureScales.set(registry, scales);
+  }
+  scales.set(tabId, scale);
+}
+
+function hasPoint(action: BrowserActionInput): action is BrowserActionInput & {
+  x: number;
+  y: number;
+} {
+  const point = action as { x?: unknown; y?: unknown };
+  return Number.isFinite(Number(point.x)) && Number.isFinite(Number(point.y));
+}
+
+/** Coordinates without a prior vision capture are already CSS pixels. */
+async function toCssPoint(
+  registry: RefRegistry,
+  bridge: ExtensionBridge,
+  action: BrowserActionInput,
+  tabId: string | undefined,
+): Promise<BrowserActionInput> {
+  if ((action.op !== 'click' && action.op !== 'drag') || !hasPoint(action)) return action;
+  const scales = captureScales.get(registry);
+  if (!scales) return action;
+  const key = tabId ?? (await bridge.listTabs()).find((tab) => tab.active)?.tabId ?? '';
+  const scale = scales.get(key) ?? 1;
+  const scaled = { ...action, x: action.x / scale, y: action.y / scale };
+  return scaled.op === 'drag'
+    ? { ...scaled, toX: scaled.toX / scale, toY: scaled.toY / scale }
+    : scaled;
+}
+
+async function act(
+  registry: RefRegistry,
+  bridge: ExtensionBridge,
+  params: Record<string, any>,
+  isCancelled?: () => boolean,
+): Promise<BrowserActionResult[]> {
+  const actions: BrowserActionInput[] = Array.isArray(params.actions) ? params.actions : [];
+  const results: BrowserActionResult[] = [];
+  if (!actions.length) return results;
+  const initial = (await bridge.listTabs()).find((tab) =>
+    params.tabId ? tab.tabId === params.tabId : tab.active,
+  );
+  if (!initial) throw Object.assign(new Error('Target tab unavailable'), { code: 'NOT_FOUND' });
+  const tabId = initial.tabId;
+  const expectedUrl = params.expectedUrl ?? initial.url;
+  for (const requested of actions) {
+    const live = (await bridge.listTabs()).find((tab) => tab.tabId === tabId);
+    assertActionOrigin(live?.url ?? '', expectedUrl, params.originPolicy);
+    if (isCancelled?.()) {
+      throw Object.assign(new Error('Browser action cancelled'), { code: 'BROWSER_INPUT_FAILED' });
+    }
+    const action = await toCssPoint(registry, bridge, requested, params.tabId);
+    const ref = 'ref' in action && action.ref ? String(action.ref) : null;
+    let elementId: string | null = null;
+    if (ref) {
+      assertRefScope(registry, tabId, live?.url ?? '');
+      if (!registry.has(ref)) {
+        results.push(
+          failure(action.op, 'BROWSER_REF_STALE', `${ref} is from an older page snapshot`),
+        );
+        if (params.stopOnError !== false) break;
+        continue;
+      }
+      // Not policy-configurable and not overridable by approval: the user types
+      // passwords, one-time codes, and card fields themselves.
+      if (action.op === 'type' && registry.isCredential(ref)) {
+        results.push(
+          failure(
+            action.op,
+            'BROWSER_CREDENTIAL_FIELD_REFUSED',
+            'Aevra will not type into a credential field',
+          ),
+        );
+        if (params.stopOnError !== false) break;
+        continue;
+      }
+      elementId = registry.resolve(ref).elementId ?? null;
+      if (!elementId) {
+        results.push(
+          failure(action.op, 'BROWSER_REF_STALE', `${ref} has no isolated-world element identity`),
+        );
+        if (params.stopOnError !== false) break;
+        continue;
+      }
+    }
+    const outcome = await bridge.apply(action, elementId, tabId, isCancelled, {
+      expectedUrl,
+      expectedDocumentId: ref ? registry.documentId : undefined,
+      originPolicy: params.originPolicy,
+      stopOnError: params.stopOnError !== false,
+    });
+    // The page-side code reports *why* it refused - a credential field, a timed
+    // out wait. Dropping the code here would surface every failure as a bare
+    // false and leave the two transports disagreeing on error reporting.
+    results.push(
+      outcome.ok
+        ? { op: action.op, ok: true }
+        : failure(
+            action.op,
+            outcome.code ?? 'BROWSER_UNAVAILABLE',
+            actionFailureMessage(action, outcome.code ?? 'BROWSER_UNAVAILABLE', params.tabId),
+          ),
+    );
+    if (!outcome.ok && params.stopOnError !== false) break;
+  }
+  return results;
+}
+
+/**
+ * The only branching logic in the extension, kept here so it runs under the
+ * `packages/browser` suites - `scripts/test.mjs` never scans `apps/extension`.
+ */
+async function handleExtensionCommandUnchecked(
+  registry: RefRegistry,
+  bridge: ExtensionBridge,
+  command: ExtensionCommand,
+  onProgress?: (progress: CaptureProgress) => void,
+  isCancelled?: () => boolean,
+): Promise<unknown> {
+  const params = command.params ?? {};
+  if (command.op === 'tabs') {
+    if (params.action === 'focus') {
+      if (!params.tabId) {
+        throw Object.assign(new Error('focus requires a tabId'), { code: 'INVALID_ARGUMENT' });
+      }
+      await bridge.focus(String(params.tabId));
+    }
+    return bridge.listTabs();
+  }
+  if (command.op === 'navigate') {
+    return bridge.navigate(
+      String(params.url),
+      params.waitUntil === 'idle' ? 'idle' : 'load',
+      params.tabId,
+    );
+  }
+  if (command.op === 'snapshot')
+    return extensionSnapshot(registry, rememberScale, bridge, params, onProgress, isCancelled);
+  if (command.op === 'act') return act(registry, bridge, params, isCancelled);
+  if (command.op === 'logs') {
+    return bridge.logs(
+      params.logKind === 'network' ? 'network' : 'console',
+      Number(params.limit ?? 50),
+      params.tabId,
+    );
+  }
+  if (command.op === 'read') {
+    const tabs = await bridge.listTabs();
+    const tab = params.tabId
+      ? tabs.find((entry) => entry.tabId === params.tabId)
+      : tabs.find((entry) => entry.active);
+    const root = await bridge.serialize(params.tabId);
+    // Scoped like the CDP transport: handing back the whole document when the
+    // caller named one element would return far more of the page than asked.
+    let scoped: SnapshotElementLike | null = root;
+    if (params.ref) {
+      assertRefScope(registry, tab?.tabId ?? '', tab?.url ?? '');
+      if (registry.documentId !== root.documentId)
+        throw Object.assign(new Error('BROWSER_REF_STALE: document changed'), {
+          code: 'BROWSER_REF_STALE',
+        });
+      scoped = registry.resolve(String(params.ref));
+    } else if (params.selector) scoped = findBySelector(root, String(params.selector));
+    if (!scoped) {
+      throw Object.assign(new Error(`No element matches ${String(params.selector)}`), {
+        code: 'NOT_FOUND',
+      });
+    }
+    return { tabId: tab?.tabId ?? '', url: tab?.url ?? '', content: textOf(scoped) };
+  }
+  throw new Error(`unsupported browser operation: ${String((command as any).op)}`);
+}
+
+export async function handleExtensionCommand(
+  registry: RefRegistry,
+  bridge: ExtensionBridge,
+  command: ExtensionCommand,
+  onProgress?: (progress: CaptureProgress) => void,
+  isCancelled?: () => boolean,
+): Promise<unknown> {
+  if (!['snapshot', 'read', 'logs'].includes(command.op))
+    return handleExtensionCommandUnchecked(registry, bridge, command, onProgress, isCancelled);
+  const params = command.params ?? {};
+  const tab = (await bridge.listTabs()).find((item) =>
+    params.tabId ? item.tabId === params.tabId : item.active,
+  );
+  if (!tab) throw Object.assign(new Error('Target tab unavailable'), { code: 'NOT_FOUND' });
+  const guard = { expectedUrl: params.expectedUrl ?? tab.url, originPolicy: params.originPolicy };
+  assertReadOrigin(tab.url, guard, params.mode);
+  const staged = command.op === 'snapshot' ? registry.fork() : registry;
+  const read = async () => {
+    const result = await handleExtensionCommandUnchecked(
+      staged,
+      bridge,
+      { ...command, params: { ...params, tabId: tab.tabId } },
+      onProgress,
+      isCancelled,
+    );
+    const live = (await bridge.listTabs()).find((item) => item.tabId === tab.tabId);
+    assertReadOrigin(live?.url ?? '', guard, params.mode);
+    return result;
+  };
+  try {
+    const result = await (bridge.guardRead
+      ? bridge.guardRead(tab.tabId, guard.expectedUrl, read)
+      : read());
+    if (command.op === 'snapshot') {
+      staged.target = { tabId: tab.tabId, url: guard.expectedUrl };
+      registry.adopt(staged);
+      if (captureScales.has(staged))
+        captureScales.set(
+          registry,
+          new Map([...(captureScales.get(registry) ?? []), ...captureScales.get(staged)!]),
+        );
+    }
+    return result;
+  } catch (error) {
+    registry.invalidate();
+    throw error;
+  }
+}
+
+function assertRefScope(registry: RefRegistry, tabId: string, url: string) {
+  if (!registry.target || registry.target.tabId !== tabId || registry.target.url !== url)
+    throw Object.assign(new Error('BROWSER_REF_STALE: ref belongs to another tab or document'), {
+      code: 'BROWSER_REF_STALE',
+    });
+}

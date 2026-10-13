@@ -1,0 +1,26 @@
+node_modules/
+/dist/
+/build/
+coverage/
+.DS_Store
+/docs/superpowers/
+.test-dist/
+.coverage-dist/
+.nyc_output/
+
+# Local agent notes and scratch evidence
+/.work-tracking/
+/current-work-*.md
+
+# Local caches and diagnostic output
+.cache/
+__pycache__/
+*.py[cod]
+*.log
+*.tmp
+*.swp
+Thumbs.db
+Desktop.ini
+*.tsbuildinfo
+shared/aevra/apps/extension/build/
+shared/aevra/apps/extension/dist/

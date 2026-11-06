@@ -114,14 +114,14 @@ export const HTML = String.raw`<!doctype html>
             <button type="button" id="copy-prompt-btn" class="primary">Copy prompt + llm.txt</button>
           </div>
           <div class="guide-ai-prompt-display">
-            <pre id="guide-prompt-text">You have access to local browser automation via Aevra Browser MCP (10 tools: browser_connect, browser_tabs, browser_navigate, browser_snapshot, browser_act_many, browser_read, browser_execute_script, browser_logs, browser_status, browser_disconnect). Follow the architecture specification below (also available at https://github.com/the-long-ride/aevra-browser/blob/main/llm.txt):</pre>
+            <pre id="guide-prompt-text">You have access to local browser automation via Aevra Browser MCP (10 tools: browser_connect, browser_tabs, browser_navigate, browser_snapshot, browser_act_many, browser_read, browser_execute_script, browser_logs, browser_status, browser_disconnect). Follow the architecture specification below (also available at https://github.com/the-long-ride/aevra-browser-use/blob/main/llm.txt):</pre>
           </div>
         </section>
         <section class="panel guide-doc-card">
           <div class="guide-doc-header">
             <div>
               <h3>llm.txt — System Specification</h3>
-              <p class="muted">Raw specification served at <a href="/llm.txt" target="_blank" rel="noreferrer">/llm.txt</a> · <a href="https://github.com/the-long-ride/aevra-browser/blob/main/llm.txt" target="_blank" rel="noreferrer">GitHub (llm.txt)</a></p>
+              <p class="muted">Raw specification served at <a href="/llm.txt" target="_blank" rel="noreferrer">/llm.txt</a> · <a href="https://github.com/the-long-ride/aevra-browser-use/blob/main/llm.txt" target="_blank" rel="noreferrer">GitHub (llm.txt)</a></p>
             </div>
             <button type="button" id="copy-llm-btn">Copy llm.txt</button>
           </div>
@@ -137,7 +137,7 @@ export const HTML = String.raw`<!doctype html>
                 <h3>Aevra Browser</h3>
                 <p class="muted">Local browser automation engine for AI assistants</p>
               </div>
-              <span class="about-version-badge" id="about-version">v1.0.0</span>
+              <span class="about-version-badge" id="about-version">v1.0.1</span>
             </div>
             <p class="about-description">
               Aevra Browser gives AI assistants deep, deterministic control over real web browsers
@@ -159,7 +159,7 @@ export const HTML = String.raw`<!doctype html>
               </div>
             </div>
             <div class="about-links-grid">
-              <a class="resource-link-item" href="https://github.com/the-long-ride/aevra-browser" target="_blank" rel="noreferrer">
+              <a class="resource-link-item" href="https://github.com/the-long-ride/aevra-browser-use" target="_blank" rel="noreferrer">
                 <div class="resource-link-info"><strong>GitHub Repository</strong><small>aevra-browser source &amp; releases</small></div>
                 <svg class="link-arrow" viewBox="0 0 12 12" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3.5 1.5h7v7M10.5 1.5 1.5 10.5"/></svg>
               </a>
@@ -175,7 +175,7 @@ export const HTML = String.raw`<!doctype html>
                 <div class="resource-link-info"><strong>aevra-desktop-use</strong><small>Desktop OS automation companion</small></div>
                 <svg class="link-arrow" viewBox="0 0 12 12" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3.5 1.5h7v7M10.5 1.5 1.5 10.5"/></svg>
               </a>
-              <a class="resource-link-item" href="https://github.com/the-long-ride/aevra-browser/issues" target="_blank" rel="noreferrer">
+              <a class="resource-link-item" href="https://github.com/the-long-ride/aevra-browser-use/issues" target="_blank" rel="noreferrer">
                 <div class="resource-link-info"><strong>GitHub Issues</strong><small>Bug reports &amp; feature requests</small></div>
                 <svg class="link-arrow" viewBox="0 0 12 12" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3.5 1.5h7v7M10.5 1.5 1.5 10.5"/></svg>
               </a>
@@ -200,7 +200,7 @@ export const HTML = String.raw`<!doctype html>
                 </p>
               </div>
               <div class="support-actions">
-                <a class="support-btn primary" href="https://github.com/the-long-ride/aevra-browser" target="_blank" rel="noreferrer">
+                <a class="support-btn primary" href="https://github.com/the-long-ride/aevra-browser-use" target="_blank" rel="noreferrer">
                   <svg class="support-btn-icon" viewBox="0 0 16 16" width="14" height="14" fill="currentColor" aria-hidden="true"><path d="M8 .25a.75.75 0 0 1 .673.418l1.882 3.815 4.21.612a.75.75 0 0 1 .416 1.279l-3.046 2.97.719 4.192a.75.75 0 0 1-1.088.791L8 12.347l-3.766 1.98a.75.75 0 0 1-1.088-.79l.72-4.194L.818 6.374a.75.75 0 0 1 .416-1.28l4.21-.611L7.327.668A.75.75 0 0 1 8 .25z"/></svg>
                   <span>Star on GitHub</span>
                 </a>
@@ -229,14 +229,14 @@ export const HTML = String.raw`<!doctype html>
           </p>
           <div class="modal-release-meta">
             <span class="modal-meta-label">Release Tag:</span>
-            <span class="modal-tag-pill" id="modal-tag-version">v1.0.0</span>
+            <span class="modal-tag-pill" id="modal-tag-version">v1.0.1</span>
           </div>
           <div class="modal-actions-grid">
-            <a id="modal-download-link" class="modal-btn primary" href="https://github.com/the-long-ride/aevra-browser/releases/download/v1.0.0/aevra-browser-extension.zip" target="_blank" rel="noreferrer" download>
+            <a id="modal-download-link" class="modal-btn primary" href="https://github.com/the-long-ride/aevra-browser-use/releases/download/v1.0.1/aevra-browser-extension.zip" target="_blank" rel="noreferrer" download>
               <svg viewBox="0 0 16 16" width="14" height="14" fill="currentColor" aria-hidden="true"><path d="M8 12 3.5 7.5h3V1h3v6.5h3L8 12zm-7 2h14v1.5H1V14z"/></svg>
               <span>Download Extension (.zip)</span>
             </a>
-            <a id="modal-release-link" class="modal-btn" href="https://github.com/the-long-ride/aevra-browser/releases/tag/v1.0.0" target="_blank" rel="noreferrer">
+            <a id="modal-release-link" class="modal-btn" href="https://github.com/the-long-ride/aevra-browser-use/releases/tag/v1.0.1" target="_blank" rel="noreferrer">
               <svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 3h7v7M13 3 5 11"/></svg>
               <span>View GitHub Release</span>
             </a>

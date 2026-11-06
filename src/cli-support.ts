@@ -2,8 +2,8 @@ export const START_STOP_LINE = '[aevra-browser] Press Ctrl+C to stop aevra-brows
 
 const AUTHOR_NAME = 'the-long-ride';
 const AUTHOR_URL = 'https://github.com/the-long-ride';
-const REPO_NAME = 'the-long-ride/aevra-browser';
-const REPO_URL = 'https://github.com/the-long-ride/aevra-browser';
+const REPO_NAME = 'the-long-ride/aevra-browser-use';
+const REPO_URL = 'https://github.com/the-long-ride/aevra-browser-use';
 
 const ESC = String.fromCharCode(27);
 const ST = ESC + String.fromCharCode(92);

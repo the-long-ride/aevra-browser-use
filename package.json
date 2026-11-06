@@ -1,15 +1,36 @@
 {
   "name": "@the-long-ride/aevra-browser",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Standalone browser-control MCP server built on aevra's extension and CDP drivers.",
   "type": "module",
   "license": "MIT",
-  "engines": {
-    "node": ">=24.0.0"
-  },
+  "author": "the-long-ride",
+  "homepage": "https://github.com/the-long-ride/aevra-browser-use#readme",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/the-long-ride/aevra-browser.git"
+    "url": "git+https://github.com/the-long-ride/aevra-browser-use.git"
+  },
+  "bugs": {
+    "url": "https://github.com/the-long-ride/aevra-browser-use/issues"
+  },
+  "keywords": [
+    "mcp",
+    "mcp-server",
+    "model-context-protocol",
+    "browser-automation",
+    "browser-use",
+    "cdp",
+    "chrome-devtools-protocol",
+    "browser",
+    "automation",
+    "ai-agents",
+    "claude-code",
+    "antigravity",
+    "codex",
+    "aevra"
+  ],
+  "engines": {
+    "node": ">=24.0.0"
   },
   "scripts": {
     "build": "node scripts/build.mjs",

@@ -8,12 +8,12 @@ summary: "Ephemeral 8-character pairing codes, chrome-extension origin validatio
 tags: ["extension", "pairing", "websocket", "chromium", "mv3"]
 source_paths: ["src/daemon/pairing-codes.ts", "src/daemon/pairing-server.ts", "src/daemon/pairing-store.ts", "src/extension/archive.ts", "src/extension/install.ts"]
 related_specs: ["architecture.daemon-and-lifecycle", "architecture.mcp-protocol", "feature.web-ui"]
-last_doc_update_at: "2026-10-28T17:15:00Z"
-last_verified_at: "2026-10-28T17:15:00Z"
-last_verified_code_commit: "3e1f006"
-last_source_change_commit: "3e1f006"
-last_source_change_at: "2026-10-28T11:33:34+07:00"
-source_fingerprint: "sha256:1521b4dbec29e4b64a7c7efc7a1120a6a554fead44bfe6328c15b57dc3d42df7"
+last_doc_update_at: "2026-11-06T04:25:00Z"
+last_verified_at: "2026-11-06T04:25:00Z"
+last_verified_code_commit: "085afb9"
+last_source_change_commit: "085afb9"
+last_source_change_at: "2026-11-06T11:25:00+07:00"
+source_fingerprint: "sha256:8602dc3ba36006df56a233dff018e99beedf376b4f9309fe25df44690956d01b"
 ---
 
 # Browser Extension Pairing and Transport

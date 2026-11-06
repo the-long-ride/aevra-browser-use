@@ -7,7 +7,7 @@ extension and CDP drivers. It exposes aevra's ten `browser_*` tools over loopbac
 HTTP, and a stdio bridge lets any number of MCP clients share the same paired
 browser. The package needs Node.js 24 or newer. Native agent configuration uses small TOML and JSONC parser dependencies.
 
-**Release:** `1.0.0`. **Compatibility:** the browser drivers are pinned to the aevra v1.2.1 snapshot. The
+**Release:** `1.0.1`. **Compatibility:** the browser drivers are pinned to the aevra v1.2.1 snapshot. The
 extension is built from the checked root-source snapshot in `shared/aevra` and is
 published as a zip release asset.
 
@@ -41,7 +41,7 @@ Choose Browser for browser-only automation on a single-user machine. Choose the 
 
 ## Current release and compatibility
 
-Version **1.0.0** includes custom startup listener ports through a consecutive base block or individual listener options, including daemon auto-start and installed stdio agents. It retains the standalone daemon/bridge, one-time pairing, extension installation, explicit CDP attachment, listener health and loopback authentication. See the [changelog](CHANGELOG.md) for release changes and the [documentation index](docs/README.md) for implemented specifications.
+Version **1.0.1** includes custom startup listener ports through a consecutive base block or individual listener options, including daemon auto-start and installed stdio agents. It retains the standalone daemon/bridge, one-time pairing, extension installation, explicit CDP attachment, listener health and loopback authentication. See the [changelog](CHANGELOG.md) for release changes and the [documentation index](docs/README.md) for implemented specifications.
 
 The browser drivers remain pinned to **Aevra v1.2.1**. The shared extension and agent integration sources are separately recorded in `shared/aevra-source.json`. Root Aevra and Aevra Desktop have independent release scopes; updating a sibling repository does not update this package's bundled snapshot. Use the [gateway](https://github.com/the-long-ride/aevra) for its current MCP management, token statistics and wider workspace features.
 
@@ -251,8 +251,8 @@ can act on the paired browser, which suits a single-user machine.
 ## Development
 
 ```bash
-git clone --recurse-submodules https://github.com/the-long-ride/aevra-browser
-cd aevra-browser
+git clone --recurse-submodules https://github.com/the-long-ride/aevra-browser-use
+cd aevra-browser-use
 npm ci
 npm test            # compiles, then runs node:test
 npm run typecheck

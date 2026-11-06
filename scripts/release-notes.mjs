@@ -30,7 +30,7 @@ export function generateReleaseNotes({
   tag,
   changelog,
   packageName = '@the-long-ride/aevra-browser',
-  repoUrl = 'https://github.com/the-long-ride/aevra-browser',
+  repoUrl = 'https://github.com/the-long-ride/aevra-browser-use',
 }) {
   const version = tagToVersion(tag);
   const sections = parseChangelogSections(changelog);

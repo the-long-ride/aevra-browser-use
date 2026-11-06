@@ -8,12 +8,12 @@ summary: "Automatic discovery, configuration, and provisioning for 6 AI coding a
 tags: ["agents", "codex", "claude-code", "opencode", "antigravity", "integration"]
 source_paths: ["src/agent-command.ts", "src/cli-support.ts", "src/daemon/client-credentials.ts"]
 related_specs: ["architecture.mcp-protocol", "feature.web-ui", "workflow.startup-ports-configuration"]
-last_doc_update_at: "2026-10-28T17:15:00Z"
-last_verified_at: "2026-10-28T17:15:00Z"
-last_verified_code_commit: "3e1f006"
-last_source_change_commit: "3e1f006"
-last_source_change_at: "2026-10-28T11:33:34+07:00"
-source_fingerprint: "sha256:b8a2fe888431531b874442f5cc65d2ab045542a65194e7c4e4dba879499cb0ec"
+last_doc_update_at: "2026-11-06T04:25:00Z"
+last_verified_at: "2026-11-06T04:25:00Z"
+last_verified_code_commit: "085afb9"
+last_source_change_commit: "085afb9"
+last_source_change_at: "2026-11-06T11:25:00+07:00"
+source_fingerprint: "sha256:a0b2a3c735531f225163dad962248bc542bcec32f9d28c713c038a5fd197da1c"
 ---
 
 # AI Agent Discovery and Integrations

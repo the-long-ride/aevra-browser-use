@@ -8,7 +8,7 @@ export const MAX_ARCHIVE_BYTES = 32 * 1024 * 1024;
 export const DOWNLOAD_TIMEOUT_MS = 60_000;
 
 export function extensionZipUrl(version: string): string {
-  return `https://github.com/the-long-ride/aevra-browser/releases/download/v${version}/aevra-browser-extension.zip`;
+  return `https://github.com/the-long-ride/aevra-browser-use/releases/download/v${version}/aevra-browser-extension.zip`;
 }
 
 function tooLarge(): Error {

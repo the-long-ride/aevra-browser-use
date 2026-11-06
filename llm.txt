@@ -1,13 +1,13 @@
 # Aevra Browser — Architecture & Usage Guide for AI Assistants (llm.txt)
 
 > **Specification, Troubleshooting & Operator Reference for Language Models**
-> Version: 1.0.0
+> Version: 1.0.1
 > License: MIT
 > Author: the-long-ride (made by <3)
-> Repository: https://github.com/the-long-ride/aevra-browser
+> Repository: https://github.com/the-long-ride/aevra-browser-use
 > Parent Repository (Aevra Gateway): https://github.com/the-long-ride/aevra
 > Desktop Automation: https://github.com/the-long-ride/aevra-desktop-use
-> Issues & Bug Reports: https://github.com/the-long-ride/aevra-browser/issues
+> Issues & Bug Reports: https://github.com/the-long-ride/aevra-browser-use/issues
 
 ---
 

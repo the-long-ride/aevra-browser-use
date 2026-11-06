@@ -8,12 +8,12 @@ summary: "Single-use bootstrap authentication, CSRF protection, interactive sett
 tags: ["ui", "web", "settings", "guide", "about", "modal"]
 source_paths: ["src/ui/actions.ts", "src/ui/assets.ts", "src/ui/html.ts", "src/ui/script.ts", "src/ui/server.ts", "src/ui/session.ts", "src/ui/style.ts"]
 related_specs: ["architecture.daemon-and-lifecycle", "feature.agent-integration", "feature.extension-pairing"]
-last_doc_update_at: "2026-10-28T17:25:00Z"
-last_verified_at: "2026-10-28T17:25:00Z"
-last_verified_code_commit: "3e1f006"
-last_source_change_commit: "3e1f006"
-last_source_change_at: "2026-10-28T17:25:00+07:00"
-source_fingerprint: "sha256:82a4123ac905d8d49a7129ac9e4a6842f820e32771a552ce1368df32aa68bd93"
+last_doc_update_at: "2026-11-06T04:25:00Z"
+last_verified_at: "2026-11-06T04:25:00Z"
+last_verified_code_commit: "085afb9"
+last_source_change_commit: "085afb9"
+last_source_change_at: "2026-11-06T11:25:00+07:00"
+source_fingerprint: "sha256:0d88bb170b0de001154133caecae5a5fe276be2a7920fd58071d1d9541d2f75c"
 ---
 
 # Settings, Guide, and About Web UI

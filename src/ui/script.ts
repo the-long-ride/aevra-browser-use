@@ -200,7 +200,7 @@ function render() {
     const tag = "v" + s.version;
     $("about-version").textContent = tag;
     $("modal-tag-version").textContent = tag;
-    const base = "https://github.com/the-long-ride/aevra-browser/releases";
+    const base = "https://github.com/the-long-ride/aevra-browser-use/releases";
     $("modal-download-link").href = base + "/download/" + tag + "/aevra-browser-extension.zip";
     $("modal-release-link").href = base + "/tag/" + tag;
   }

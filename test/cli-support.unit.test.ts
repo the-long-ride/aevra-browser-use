@@ -5,8 +5,8 @@ import { creditLine, readyLines, serviceTable, START_STOP_LINE } from '../src/cl
 test('creditLine formats author and repo links', () => {
   const line = creditLine(false);
   assert.ok(line.includes('the-long-ride'));
-  assert.ok(line.includes('the-long-ride/aevra-browser'));
-  assert.ok(line.includes('https://github.com/the-long-ride/aevra-browser'));
+  assert.ok(line.includes('the-long-ride/aevra-browser-use'));
+  assert.ok(line.includes('https://github.com/the-long-ride/aevra-browser-use'));
 });
 
 test('serviceTable builds border and service rows', () => {

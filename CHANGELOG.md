@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.0.1] - 2026-11-06
+
+### Changed
+
+- Updated repository URL to `https://github.com/the-long-ride/aevra-browser-use` across package manifest, CLI helpers, UI resources, documentation, and release automation.
+- Updated extension release download URLs and issue tracker endpoints to point to `aevra-browser-use`.
+- Bumped version to `v1.0.1` and synchronized Web UI version badges, download modal links, and llm.txt specifications.
+
 ## [1.0.0] - 2026-10-19
 
 First stable source release. The package version is independent of the bundled upstream extension version.

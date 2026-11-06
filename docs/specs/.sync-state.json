@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
-  "last_sync_commit": "3e1f006",
-  "last_full_scan_commit": "3e1f006",
-  "last_sync_at": "2026-10-28T17:15:00Z",
+  "last_sync_commit": "085afb9",
+  "last_full_scan_commit": "085afb9",
+  "last_sync_at": "2026-11-06T04:25:00Z",
   "inventory_complete": true,
   "source_to_specs": {
     "src/bridge/stdio-bridge.ts": ["architecture.daemon-and-lifecycle"],

@@ -1,6 +1,6 @@
 # Aevra Browser documentation
 
-Current product version: **1.0.0**.
+Current product version: **1.0.1**.
 
 - [Getting started, commands and configuration](../README.md)
 - [Release history](../CHANGELOG.md)

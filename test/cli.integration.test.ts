@@ -249,12 +249,16 @@ function spawnCli(
   return { child, out: () => text };
 }
 
-async function freePort(): Promise<number> {
-  const probe = createServer();
-  await new Promise<void>((resolve) => probe.listen(0, '127.0.0.1', resolve));
-  const { port } = probe.address() as { port: number };
-  await new Promise<void>((resolve) => probe.close(() => resolve()));
-  return port;
+async function freePort(exclude: Iterable<number> = []): Promise<number> {
+  const excluded = new Set(exclude);
+  for (let attempt = 0; attempt < 50; attempt++) {
+    const probe = createServer();
+    await new Promise<void>((resolve) => probe.listen(0, '127.0.0.1', resolve));
+    const { port } = probe.address() as { port: number };
+    await new Promise<void>((resolve) => probe.close(() => resolve()));
+    if (!excluded.has(port)) return port;
+  }
+  throw new Error('could not reserve a listener port');
 }
 
 test('the real binary prints its version', async () => {
@@ -265,12 +269,15 @@ test('the real binary prints its version', async () => {
 
 test('two serve processes racing leave exactly one daemon and one "already running"', async (t) => {
   const dir = stateDir(t);
+  const pairPort = await freePort();
+  const mcpPort = await freePort([pairPort]);
+  const wsPort = await freePort([pairPort, mcpPort]);
   const env = {
     ...process.env,
     AEVRA_BROWSER_HOME: dir,
-    AEVRA_BROWSER_PAIR_PORT: String(await freePort()),
-    AEVRA_BROWSER_MCP_PORT: String(await freePort()),
-    AEVRA_BROWSER_WS_PORT: String(await freePort()),
+    AEVRA_BROWSER_PAIR_PORT: String(pairPort),
+    AEVRA_BROWSER_MCP_PORT: String(mcpPort),
+    AEVRA_BROWSER_WS_PORT: String(wsPort),
   };
   const first = spawnCli(['serve'], env);
   const second = spawnCli(['serve'], env);

@@ -13,12 +13,14 @@ import { FakeCdp } from '../vendor/aevra/packages/browser/test/fake-cdp.js';
 
 const CLI = fileURLToPath(new URL('../src/cli.js', import.meta.url));
 
-async function freePort(): Promise<number> {
+async function freePort(exclude: Iterable<number> = []): Promise<number> {
+  const excluded = new Set(exclude);
   // Stay below the Windows ephemeral range: outgoing health probes must not
   // consume a just-released port from a requested consecutive listener block.
   for (let attempt = 0; attempt < 50; attempt++) {
     const server = createServer();
     const port = 20000 + Math.floor(Math.random() * 20000);
+    if (excluded.has(port)) continue;
     try {
       await new Promise<void>((resolve, reject) => {
         server.once('error', reject);
@@ -33,9 +35,18 @@ async function freePort(): Promise<number> {
   throw new Error('could not reserve a listener port');
 }
 
+async function reserveDistinctPorts(count: number): Promise<number[]> {
+  const chosen = new Set<number>();
+  while (chosen.size < count) {
+    chosen.add(await freePort(chosen));
+  }
+  return Array.from(chosen);
+}
+
 async function setup(t: TestContext) {
   const dir = mkdtempSync(path.join(tmpdir(), 'aevra-browser-ports-'));
-  const ports = { pair: await freePort(), mcp: await freePort(), ws: await freePort() };
+  const [pair, mcp, ws] = await reserveDistinctPorts(3);
+  const ports = { pair, mcp, ws };
   assert.equal(new Set(Object.values(ports)).size, 3);
   const env = { ...process.env, AEVRA_BROWSER_HOME: dir };
   t.after(async () => {
